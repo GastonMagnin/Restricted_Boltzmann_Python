@@ -89,6 +89,8 @@ class Restricted_Boltzman():
 			input_group: the input to be identified
 			output: boolean defining wether the reconstructed input and some other information is printed
 		"""
+		if len(input_group) < self.input_layer_size:
+			input_group = np.append(input_group, np.zeros(self.input_layer_size - len(input_group)))
 		# forward activation
 		hidden_layer_in = np.dot(input_group, self.weights)
 		hidden_layer_out = self.activation_function(hidden_layer_in)
@@ -100,7 +102,7 @@ class Restricted_Boltzman():
 		# if the output flag is set print the reconstructed input the output value for the identified label
 		# the identified label and the output values for all labels
 		if output:
-			print(mndata.display(output_layer_out[:784] ))
+			print(MNIST.display(output_layer_out[:784] * 255))
 			print(labels.max())
 			print(labels.argmax())
 			print(labels)
@@ -118,13 +120,31 @@ class Restricted_Boltzman():
 		images, labels = mndata.load_testing()
 		# construct inputs with all label neurons deactivated
 		test_amount = len(images)
-		inputs = np.hstack((np.array(images[:test_amount]), np.zeros((test_amount,10))))
+		#inputs = np.hstack((np.array(images[:test_amount]), np.zeros((test_amount,10))))
+		inputs = np.array(images[:test_amount])
 		# have the network identify all inputs
 		test_data = [x.identify(inputs[i]) for i in range(test_amount)]
 		# compute and return the percentage of correctly identified inputs
 		return f"percentage {1-np.mean(np.array(labels[:test_amount]) != np.array(test_data))}"
 
+	def load_and_train(self, training_amount=10000, max_count=1):
+		mndata = MNIST(r"samples")
+		images, labels = mndata.load_training()
 
+		# reduce the amount of images and labels in the training set to the amount specified above
+		images = images[:training_amount]
+		labels = labels[:training_amount]
+
+		#convert images to a numpy array and replacing all non-zero values with 1 
+		images = [[1 if el != 0 else 0 for el in image] for image in images]
+
+		# each label is a number from 0 to 9 to represent that in the inputs for the network each number i is converted to 10 numbers with all except the ith being 0
+		label_input = np.array([[0 if i != label else 1 for i in range(10)] for label in labels]).reshape(training_amount, 10)	
+
+		# construct inputs by appending the label inputs to the images
+		input_group = np.hstack((np.array(images), label_input))
+
+		self.train(input_group, max_count=max_count)
 
 if __name__ == "__main__":
 	input_layer_size = 794
